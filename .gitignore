@@ -1,0 +1,25 @@
+# Scan output — never push these
+output/
+*.pdf
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual environment
+venv/
+.env/
+env/
+
+# Sensitive config
+.env
+*.key
+*.secret
+
+# OS junk
+.DS_Store
+Thumbs.db
