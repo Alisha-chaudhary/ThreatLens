@@ -6,6 +6,9 @@
 ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Active-success)
+
+![ThreatLens Terminal Interface](assets/Demo.gif)
+
 </div>
 
 > A modular, professional-grade security reconnaissance tool built in Python.
