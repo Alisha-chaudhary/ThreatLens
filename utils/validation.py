@@ -1,7 +1,7 @@
 # utils/validation.py
 import re
 
-def validate_input(target: str) -> str | None:
+def validate_input(target: str) -> Literal["ip", "domain"] | None:
     """
     Accepts a raw string from the user.
     Returns 'domain', 'ip', or None if invalid.
