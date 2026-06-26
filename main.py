@@ -1,3 +1,6 @@
+# Import core modules and project components responsible for 
+# input validation, parallel scanning, CVE enrichment, threat correlation, risk scoring, report generation, and terminal output.
+
 import json, os
 from utils.validation         import validate_input, sanitise_target
 from modules.parallel_runner  import run_all_scans
@@ -19,6 +22,10 @@ def main():
 
     target = sanitise_target(raw_input)
     print_scan_start(target, target_type)
+
+# It takes user input, validates it, and sanitises it before use.
+# The two-step approach: validate first, then sanitise is defensive programming.
+# If validation fails, the tool exits cleanly rather than crashing downstream.
 
     # ── Step 2: Parallel scanning ────────────────────────────────────────────
     results = run_all_scans(target)
