@@ -1,5 +1,6 @@
 # utils/validation.py
 import re
+from typing import Literal
 
 def validate_input(target: str) -> Literal["ip", "domain"] | None:
     """
