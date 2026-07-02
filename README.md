@@ -1,8 +1,9 @@
+<div align="center">
 
-<div align = "center">
-    
 # ThreatLens 🔍
-### Threat Intelligence & Vulnerability Scanner
+
+## Python-Based Vulnerability Assessment Platform
+
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -12,15 +13,13 @@
 
 </div>
 
-> A modular, professional-grade security reconnaissance tool built in Python.
+ThreatLens is a modular Python-based vulnerability assessment platform that combines reconnaissance, vulnerability intelligence, and automated reporting into a single workflow.
 
-It was created to answer a simple question:
-> What would a lightweight enterprise-style security assessment pipeline look like if I built it from scratch?
+The project explores a practical engineering question:
 
-The project combines OSINT gathering, service enumeration, SSL/TLS analysis, DNS inspection, technology fingerprinting, CVE enrichment, and threat correlation into a single automated workflow.
+> **What would a lightweight vulnerability assessment pipeline look like if built from scratch using open-source tooling and public threat intelligence?**
 
-Instead of running multiple tools manually and stitching results together by hand, ThreatLens orchestrates everything in parallel and produces structured reports with risk scoring and contextual findings.
-
+ThreatLens orchestrates OSINT gathering, service enumeration, SSL/TLS analysis, DNS inspection, HTTP security header analysis, technology fingerprinting, and CVE enrichment in parallel, producing structured reports with weighted risk scoring to support vulnerability assessment and prioritisation.
 
 ---
 ## 🛠️ Built for:
