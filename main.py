@@ -28,23 +28,23 @@ def main():
     print_scan_start(target, target_type)
 
 
-"""
-Core reconnaissance phase.
-
-Executes all reconnaissance modules in parallel to reduce overall scan
-time, including port scanning, OSINT gathering, HTTP header analysis,
-misconfiguration checks, DNS/WHOIS lookups, and service fingerprinting.
-
-The results are returned as a single dictionary and unpacked into
-individual variables for easier access.
-
-A CVE lookup is performed only after the scan completes successfully,
-as it requires service and version information to identify known vulnerabilities.
-If either step fails, the lookup is skipped and an empty result is returned, 
-preventing unnecessary errors and ensuring graceful fault tolerance.
-"""
-    # ── Step 2: Parallel scanning ────────────────────────────────────────────
+    """
+    Core reconnaissance phase.
     
+    Executes all reconnaissance modules in parallel to reduce overall scan
+    time, including port scanning, OSINT gathering, HTTP header analysis,
+    misconfiguration checks, DNS/WHOIS lookups, and service fingerprinting.
+    
+    The results are returned as a single dictionary and unpacked into
+    individual variables for easier access.
+    
+    A CVE lookup is performed only after the scan completes successfully,
+    as it requires service and version information to identify known vulnerabilities.
+    If either step fails, the lookup is skipped and an empty result is returned, 
+    preventing unnecessary errors and ensuring graceful fault tolerance.
+    """
+    # ── Step 2: Parallel scanning ────────────────────────────────────────────
+
     results = run_all_scans(target)
     scan        = results.get("scan",        {})
     osint       = results.get("osint",       {})
