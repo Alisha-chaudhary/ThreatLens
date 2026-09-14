@@ -1,0 +1,168 @@
+# Security Pipeline
+
+# Stage 6: automated validation
+# Stage 7: vulnerability intelligence + security gate
+on:
+  push:
+    branches:
+      - main
+      - feature/security-gate-pipeline
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: security-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────────────
+  # STAGE 6A: Automated Tests
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+             pip install -r requirements.txt
+             pip install pytest
+
+      - name: Run test suite
+        run: python -m pytest test_validation.py -v
+
+
+  # ──────────────────────────────────────────────────────────────────────
+  # STAGE 6B: Software Composition Analysis
+  # ──────────────────────────────────────────────────────────────────────
+  sca:
+    name: SCA (pip-audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run dependency vulnerability scan
+        id: pip_audit
+        continue-on-error: true
+        run: |
+          pip-audit \
+            -r requirements.txt \
+            -f json \
+            -o sca-results.json
+
+      - name: Verify SCA report was generated
+        if: always()
+        run: |
+          if [ ! -f sca-results.json ]; then
+            echo "ERROR: pip-audit did not produce sca-results.json."
+            exit 1
+          fi
+
+      - name: Upload SCA results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-results
+          path: sca-results.json
+          retention-days: 14
+
+
+  # ──────────────────────────────────────────────────────────────────────
+  # VULNERABILITY INTELLIGENCE
+  # ──────────────────────────────────────────────────────────────────────
+  vuln-intel:
+    name: Vulnerability Intelligence
+    needs: sca
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install script dependencies
+        run: pip install requests
+
+      - name: Download SCA results
+        uses: actions/download-artifact@v4
+        with:
+          name: sca-results
+
+      - name: Enrich findings with CVSS / EPSS / KEV
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          python scripts/vuln_intel.py \
+            --input sca-results.json \
+            --output risk-report.json
+
+      - name: Upload risk report
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-report
+          path: risk-report.json
+          retention-days: 14
+
+
+  # ──────────────────────────────────────────────────────────────────────
+  # STAGE 7: SECURITY GATE
+  # ──────────────────────────────────────────────────────────────────────
+  security-gate:
+    name: Security Gate
+    needs: [test, vuln-intel]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Download risk report
+        uses: actions/download-artifact@v4
+        with:
+          name: risk-report
+
+      - name: Evaluate security policy
+        env:
+          MAX_HIGH: "3"
+          FAIL_ON_KEV: "true"
+          MAX_CRITICAL: "0"
+        run: |
+          python scripts/security_gate.py \
+            --input risk-report.json
