@@ -2,10 +2,11 @@
 
 # ThreatLens 🔍
 
-## Python-Based Vulnerability Assessment Platform
+## Vulnerability Assessment & Security Validation Platform
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-black)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
@@ -13,108 +14,216 @@
 
 </div>
 
-ThreatLens is a modular Python-based vulnerability assessment platform that combines reconnaissance, vulnerability intelligence, and automated reporting into a single workflow.
+ThreatLens is a modular Python cybersecurity platform that combines **reconnaissance, vulnerability intelligence, risk assessment, automated reporting, and CI/CD security validation**.
 
-The project explores a practical engineering question:
+The project has two connected layers:
 
-> **What would a lightweight vulnerability assessment pipeline look like if built from scratch using open-source tooling and public threat intelligence?**
+- **Assessment pipeline:** authorised target reconnaissance, service and technology discovery, CVE enrichment, cross-tool correlation, risk scoring, and reporting.
+- **Security validation pipeline:** dependency scanning with `pip-audit`, CVE enrichment with CVSS/EPSS/CISA KEV intelligence, deterministic risk classification, and a policy-based security gate in GitHub Actions.
 
-ThreatLens orchestrates OSINT gathering, service enumeration, SSL/TLS analysis, DNS inspection, HTTP security header analysis, technology fingerprinting, and CVE enrichment in parallel, producing structured reports with weighted risk scoring to support vulnerability assessment and prioritisation.
+> **Engineering goal:** build a lightweight vulnerability assessment and security validation workflow using open-source tooling, public vulnerability intelligence, and deterministic security policies.
 
 ---
-## 🛠️ Built for:
 
-- cybersecurity learning
-- authorised security assessments
-- defensive research
-- portfolio and engineering practice
+## 🛡️ What ThreatLens Does
 
-## 🚀 What it does
+### 1. Authorised Security Assessment
 
-ThreatLens takes a domain or IP address and runs a full security assessment automatically:
+ThreatLens accepts a domain or IP address and orchestrates multiple security checks:
 
-1. **Validates and sanitises** the input against shell injection
-2. **Runs 6 scans in parallel** - nmap, theHarvester, testssl, header checker, DNS/WHOIS, fingerprinting
-3. **Runs CVE lookup** against the NVD database using discovered version info
-4. **Correlates findings** across all tools using 11 cross-tool threat patterns
-5. **Calculates a risk score** out of 100 with severity breakdown
-6. **Generates reports** - Rich terminal UI, PDF, HTML, and raw JSON
+1. Validates and sanitises the target input.
+2. Runs reconnaissance and security checks in parallel.
+3. Discovers services, versions, DNS information, exposed technology, and HTTP/TLS configuration.
+4. Enriches discovered version information with CVE data from the NVD API.
+5. Correlates findings across tools using 11 threat patterns.
+6. Calculates a weighted risk score from 0–100.
+7. Generates structured PDF, HTML, JSON, and terminal reports.
 
-## ⚡ Quick Start
+### 2. CI/CD Security Validation
+
+The newer security pipeline evaluates the project's own Python dependencies before changes are accepted:
+
+```text
+requirements.txt
+      │
+      ▼
+  pip-audit
+      │
+      ▼
+ SCA findings
+      │
+      ▼
+ CVE enrichment
+ ┌────┼───────────────┐
+ ▼    ▼               ▼
+CVSS EPSS          CISA KEV
+ └────┼───────────────┘
+      ▼
+Deterministic risk tier
+      │
+      ▼
+ Security Policy Gate
+      │
+   PASS / FAIL
+```
+
+The pipeline records vulnerability-intelligence failures explicitly rather than silently treating missing data as clean.
+
+---
+
+## ⚙️ Security Gate Policy
+
+The security gate is implemented in `scripts/security_gate.py` and performs **no network calls**. It evaluates the enriched report against explicit policy thresholds.
+
+Current policy:
+
+| Condition | Result |
+|---|---|
+| CRITICAL findings > 0 | FAIL |
+| HIGH findings > 3 | FAIL |
+| Any CISA KEV-listed finding | FAIL |
+| Partial vulnerability-intelligence enrichment | FAIL |
+| No policy violation | PASS |
+
+The policy can be adjusted through environment variables:
+
+- `MAX_CRITICAL`
+- `MAX_HIGH`
+- `FAIL_ON_KEV`
+
+The intelligence enrichment stage in `scripts/vuln_intel.py` uses:
+
+- **NVD** for CVSS data
+- **FIRST EPSS** for exploitation probability signals
+- **CISA KEV** for known exploited vulnerabilities
+
+KEV status takes precedence over the numerical CVSS/EPSS model.
+
+---
+
+## 🚀 Quick Start
+
+### Clone and install
 
 ```bash
 git clone https://github.com/Alisha-chaudhary/ThreatLens.git
-
 cd ThreatLens
 
 python3 -m venv .venv
-source venv/bin/activate
+source .venv/bin/activate
 
 pip install -r requirements.txt
+```
 
+### Verify external tools
+
+```bash
+nmap --version
+theHarvester --version
+testssl.sh --version
+```
+
+### Run the assessment pipeline
+
+```bash
 python main.py
 ```
----
-## ⚡ Features
 
-- Parallel multi-tool scanning pipeline
-- OSINT intelligence gathering
-- Port and service enumeration
-- SSL/TLS certificate and protocol analysis
-- HTTP security header inspection
-- DNS, SPF, DKIM, and DMARC validation
-- Technology fingerprinting and CMS detection
-- CVE enrichment using the NVD API
-- Cross-tool threat correlation engine
-- Weighted risk scoring system
-- PDF, HTML, JSON, and Rich terminal reporting
+ThreatLens will prompt for a target:
+
+```text
+Enter target (domain/IP): scanme.nmap.org
+```
+
+---
+
+## 🧪 Validation & CI/CD
+
+GitHub Actions runs the security pipeline on:
+
+- pushes to `main`
+- pushes to `feature/security-gate-pipeline`
+- pull requests targeting `main`
+- manual workflow dispatch
+
+The workflow uses **Python 3.13** and is organised into these stages:
+
+| Stage | Purpose |
+|---|---|
+| Tests | Runs the automated validation suite |
+| SCA | Scans project dependencies with `pip-audit` |
+| Vulnerability Intelligence | Enriches CVEs with CVSS, EPSS, and CISA KEV data |
+| Security Gate | Applies deterministic security policy and returns PASS/FAIL |
+
+Key workflow file:
+
+```text
+.github/workflows/security-pipeline.yml
+```
+
+Run the validation suite locally:
+
+```bash
+python -m pytest test_validation.py -v
+```
 
 ---
 
 ## 🧩 Project Structure
 
-```
+```text
 ThreatLens/
-├── main.py                      # Entry point — orchestrates the pipeline
+├── main.py
 ├── modules/
-│   ├── scanner.py               # nmap port scanner
-│   ├── osint.py                 # theHarvester OSINT
-│   ├── misconfig.py             # testssl SSL/TLS check
-│   ├── headers.py               # HTTP security header checker
-│   ├── dns_whois.py             # SPF, DMARC, DKIM, WHOIS
-│   ├── fingerprint.py           # CMS and tech fingerprinting
-│   ├── cve_lookup.py            # NVD CVE lookup
-│   ├── correlation.py           # Cross-tool threat correlation
-│   ├── scoring.py               # Risk scoring engine
-│   └── parallel_runner.py       # ThreadPoolExecutor parallel runner
+│   ├── scanner.py
+│   ├── osint.py
+│   ├── misconfig.py
+│   ├── headers.py
+│   ├── dns_whois.py
+│   ├── fingerprint.py
+│   ├── cve_lookup.py
+│   ├── correlation.py
+│   ├── scoring.py
+│   └── parallel_runner.py
+│
+├── scripts/
+│   ├── vuln_intel.py
+│   └── security_gate.py
+│
 ├── reports/
-│   ├── report_generator.py      # HTML report
-│   ├── pdf_generator.py         # PDF report (ReportLab)
-│   └── terminal_output.py       # Rich terminal UI
+│   ├── report_generator.py
+│   ├── pdf_generator.py
+│   └── terminal_output.py
+│
 ├── utils/
-│   └── validation.py            # Input validation and sanitisation
-├── output/                      # Generated reports saved here
+│   └── validation.py
+│
+├── output/
 │   ├── report.html
 │   ├── report.pdf
 │   └── raw_results.json
-└── tests/
-    └── test_validation.py
+│
+├── test_validation.py
+├── requirements.txt
+└── .github/
+    └── workflows/
+        └── security-pipeline.yml
 ```
 
+---
 
-## 🏗️ Architecture
+## 🏗️ Assessment Architecture
 
 ```mermaid
 flowchart TD
-    A[User Input] --> B[Validation & Sanitisation]
-
-    B --> C[Parallel Execution]
+    A[Target Input] --> B[Validation & Sanitisation]
+    B --> C[Parallel Reconnaissance]
 
     C --> D[nmap]
     C --> E[theHarvester]
     C --> F[testssl.sh]
-    C --> G[DNS/WHOIS]
-    C --> H[Header Analysis]
+    C --> G[DNS / WHOIS]
+    C --> H[HTTP Header Analysis]
     C --> I[Technology Fingerprinting]
 
     D --> J[CVE Lookup]
@@ -127,164 +236,147 @@ flowchart TD
     L --> N[PDF Report]
     L --> O[JSON Output]
 ```
-ThreatLens runs most scans concurrently using ThreadPoolExecutor, reducing overall execution time while keeping modules independent and extensible.
 
-The CVE lookup stage runs afterward because it depends on service and version information discovered during scanning.
-
+Most reconnaissance modules run concurrently using `ThreadPoolExecutor`. CVE lookup follows discovery because it depends on service and version information identified during reconnaissance.
 
 ---
 
-## ⚙️ Installation
+## 🔎 Core Assessment Modules
 
-### Requirements
-
-- Python 3.10+
-- Kali Linux or any Linux distro
-- nmap
-- theHarvester
-- testssl.sh
-
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/Alisha-chaudhary/ThreatLens.git
-cd ThreatLens
-
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Verify external tools are installed
-nmap --version
-theHarvester --version
-testssl.sh --version
-```
+| Module | Purpose |
+|---|---|
+| **OSINT** | Subdomains, emails, and IP information via theHarvester |
+| **Port Scanner** | Open ports, services, and versions via nmap |
+| **SSL/TLS** | Protocol, certificate, and configuration analysis via testssl.sh |
+| **Header Checker** | HTTP security-header inspection |
+| **DNS / WHOIS** | DNS records, SPF, DMARC, DKIM, and WHOIS information |
+| **Technology Fingerprinting** | CMS, frameworks, and server technology discovery |
+| **CVE Lookup** | NVD CVE enrichment based on discovered versions |
+| **Correlation Engine** | 11 cross-tool threat patterns |
+| **Risk Scoring** | Weighted assessment score capped at 100 |
+| **Report Generator** | PDF, HTML, JSON, and Rich terminal output |
 
 ---
 
-## Usage
+## 🔗 Correlation Patterns
 
-```bash
-# Activate venv first (every new terminal session)
-source venv/bin/activate
+ThreatLens correlates observations from multiple assessment modules rather than treating every finding in isolation.
 
-# Run the scanner
-python main.py
+Examples include:
 
-# Enter target when prompted
-Enter target (domain/IP): scanme.nmap.org
-```
+| Pattern | Sources | Severity |
+|---|---|---|
+| Exposed admin port | nmap | High |
+| Weak SSL + open HTTPS | nmap + testssl | High |
+| Emails + subdomains exposed | theHarvester | Medium |
+| Unencrypted service + sensitive port | nmap | High |
+| Certificate trust issue + live HTTPS | testssl + nmap | Medium |
+| Poor headers + HTTP open | headers + nmap | High |
+| Young domain + email exposure | WHOIS + OSINT | Critical |
+| No SPF + No DMARC | DNS | Critical |
+| CMS detected + many open ports | fingerprint + nmap | High |
+| Server version exposed + weak SSL | fingerprint + testssl | High |
+| Critical CVE + exposed service | NVD + nmap | Critical |
 
-### Legal test targets
+---
+
+## 📊 Assessment Risk Scoring
+
+| Score | Severity |
+|---|---|
+| 75–100 | Critical |
+| 50–74 | High |
+| 25–49 | Medium |
+| 0–24 | Low |
+
+Severity weights:
+
+- Critical = 40 points
+- High = 25 points
+- Medium = 15 points
+- Low = 5 points
+
+The final assessment score is capped at 100.
+
+**Important:** a finding's presence does not automatically represent the same level of real-world risk in every environment. Context, exposure, configuration, compensating controls, and exploitability still matter.
+
+---
+
+## 📁 Assessment Output
+
+After a scan, ThreatLens can generate:
+
+| Output | Purpose |
+|---|---|
+| `report.pdf` | Structured security assessment report |
+| `report.html` | Browser-viewable report |
+| `raw_results.json` | Machine-readable assessment data |
+
+The CI/CD workflow separately produces `sca-results.json` and `risk-report.json` as GitHub Actions artifacts.
+
+---
+
+## 🛠️ Built With
+
+- **Python**
+- **ThreadPoolExecutor** for parallel execution
+- **nmap** for service and port discovery
+- **theHarvester** for OSINT collection
+- **testssl.sh** for SSL/TLS analysis
+- **dnspython** for DNS queries
+- **python-whois** for WHOIS information
+- **requests** for HTTP/API communication
+- **NVD API** for CVE intelligence
+- **FIRST EPSS** for exploitation-probability data
+- **CISA KEV** for known exploited vulnerabilities
+- **pip-audit** for Python dependency vulnerability scanning
+- **ReportLab** for PDF reporting
+- **Rich** for terminal output
+- **GitHub Actions** for automated security validation
+
+---
+
+## 🧠 Engineering Concepts
+
+ThreatLens was built incrementally to explore practical cybersecurity engineering concepts, including:
+
+- Input validation and shell-injection prevention
+- Subprocess management and output parsing
+- XML parsing of nmap results
+- Parallel execution with `ThreadPoolExecutor`
+- DNS record analysis
+- HTTP security headers
+- SSL/TLS configuration analysis
+- CVE and vulnerability intelligence enrichment
+- CVSS and EPSS-based risk signals
+- CISA KEV awareness
+- Deterministic security policy enforcement
+- Software Composition Analysis (SCA)
+- Automated testing and CI/CD security controls
+- PDF and HTML security reporting
+
+---
+
+## ⚖️ Authorised Testing Only
+
+ThreatLens is intended for **authorised security testing, defensive research, and educational use**.
+
+Only scan systems you own or have explicit permission to assess. The author is not responsible for misuse of the project.
+
+For safe demonstrations, use deliberately authorised targets such as:
 
 | Target | Purpose |
 |---|---|
-| `scanme.nmap.org` | Maintained by nmap team — explicitly permitted |
-| `testphp.vulnweb.com` | Acunetix test site — deliberately vulnerable |
-| `http.badssl.com` | SSL/header testing — publicly available |
-
-> ⚠️ **Only scan targets you own or have explicit written permission to scan.**  
-> Unauthorised scanning is illegal in most jurisdictions.
-
----
-## Core Modules
-
-| Module                   | What it checks                                                    |
-|--------------------------|-------------------------------------------------------------------|
-| **OSINT**                | Subdomains, emails, IP addresses via theHarvester                 |
-| **Port Scanner**         | Open ports, services, versions via nmap                           |
-| **SSL/TLS**              | Weak protocols, POODLE, HEARTBLEED, cert expiry via testssl       |
-| **Header Checker**       | CSP, HSTS, X-Frame-Options, leaky server headers                  |
-| **DNS / WHOIS**          | SPF, DMARC, DKIM, domain age, registrar info                      |
-| **Tech Fingerprinting**  | CMS (WordPress, Joomla, Drupal), frameworks, server software      |
-| **CVE Lookup**           | Queries NVD API for CVEs matching discovered versions             |
-| **Correlation Engine**   | 11 cross-tool patterns (e.g. weak SSL + open HTTPS = active risk) |
-| **Risk Scoring**         | Weighted severity scoring, capped at 100                          |
-| **Report Generator**     | PDF (ReportLab), HTML, JSON, Rich terminal summary                |
-
----
-## 📁 Output
-
-After each scan the following files are saved to `output/`:
-
-| File               | Format | Purpose                               |
-|--------------------|--------|---------------------------------------|
-| `report.pdf`       | PDF    | Professional client-ready report      |
-| `report.html`      | HTML   | Open in browser for full styled view  |
-| `raw_results.json` | JSON   | Machine-readable data for integration |
+| `scanme.nmap.org` | Nmap-authorised scanning target |
+| `testphp.vulnweb.com` | Deliberately vulnerable test application |
+| `http.badssl.com` | TLS and HTTP testing |
 
 ---
 
-## Correlation Patterns
-
-The correlation engine detects combined threats that no single tool can catch alone:
-
-| Pattern                              | Tools Combined          | Severity |
-|--------------------------------------|-------------------------|----------|
-| Exposed admin port                   | nmap                    | High     |
-| Weak SSL + open HTTPS                | nmap + testssl          | High     |
-| Emails + subdomains exposed          | theHarvester            | Medium   |
-| Unencrypted service + sensitive port | nmap                    | High     |
-| Cert trust issue + live HTTPS        | testssl + nmap          | Medium   |
-| Poor headers + HTTP open             | headers + nmap          | High     |
-| Young domain + email exposure        | whois + osint           | Critical |
-| No SPF + No DMARC                    | dns                     | Critical |
-| CMS detected + many open ports       | fingerprint + nmap      | High     |
-| Server version exposed + weak SSL    | fingerprint + testssl   | High     |
-| Critical CVE + exposed service       | nvd + nmap              | Critical |
-
----
-
-## 📊 Risk Scoring
-
-| Score     | Severity  |
-|-----------|-----------|
-| 75 – 100  | Critical  |
-| 50 – 74   | High      |
-| 25 – 49   | Medium    |
-| 0 – 24    | Low       |
-
-Severity weights: Critical = 40pts, High = 25pts, Medium = 15pts, Low = 5pts  
-Final score is capped at 100.
-
----
-
-## Built with
-
-- Python 3.13
-- [Rich](https://github.com/Textualize/rich) — terminal UI
-- [ReportLab](https://www.reportlab.com/) — PDF generation
-- [dnspython](https://www.dnspython.org/) — DNS queries
-- [requests](https://requests.readthedocs.io/) — HTTP client
-- [nmap](https://nmap.org/) — port scanning
-- [theHarvester](https://github.com/laramies/theHarvester) — OSINT
-- [testssl.sh](https://testssl.sh/) — SSL/TLS analysis
-- [NVD API](https://nvd.nist.gov/developers/vulnerabilities) — CVE data
-
----
-
-## 🧠 Engineering Concepts Applied
-
-This project was built as a hands-on cybersecurity learning exercise. Every module was written incrementally with a focus on understanding. Key concepts learned and applied:
-
-- Subprocess management and output parsing
-- XML parsing (nmap -oX output)
-- Parallel execution with ThreadPoolExecutor
-- DNS record types (TXT, MX, SPF, DMARC, DKIM)
-- HTTP security headers and their attack vectors
-- CVSS scoring system
-- Shell injection prevention via input sanitisation
-- Virtual environment isolation on Kali Linux
-- Professional report generation (PDF + HTML)
-
----
 ## 📄 License
 
 This project is licensed under the MIT License.
+
 ---
 
 ## 🧭 Roadmap
@@ -296,14 +388,8 @@ This project is licensed under the MIT License.
 - [ ] Shodan integration
 - [ ] Web dashboard
 - [ ] SIEM export support
-
-
-## ⚖️ Disclaimer
-
-ThreatLens is intended for **authorised security testing only**.  
-The author is not responsible for any misuse of this tool.  
-Always obtain written permission before scanning any target.
+- [ ] CI/CD security policy expansion
 
 ---
 
-*Built by Alisha-chaudhary*
+**Built by Alisha-chaudhary**
